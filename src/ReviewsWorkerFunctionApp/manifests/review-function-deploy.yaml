@@ -1,0 +1,178 @@
+data:
+  ReviewQueueConnectionString: RGVmYXVsdEVuZHBvaW50c1Byb3RvY29sPWh0dHBzO0FjY291bnROYW1lPXJldmlld3Nvbms4c3N0b3JhZ2U7QWNjb3VudEtleT1oRFZxOU13MUtBb3lBZzFEbkxBR2R0cklkV2YwelZnakZMejJXZC9EWk1DZjRLT2NhclE5RjFaZlN1YXVzMTRXZHFRTTc1Uk5rNFhubDFJeCtxc05odz09O0VuZHBvaW50U3VmZml4PWNvcmUud2luZG93cy5uZXQ=
+  AzureWebJobsStorage: RGVmYXVsdEVuZHBvaW50c1Byb3RvY29sPWh0dHBzO0FjY291bnROYW1lPXJldmlld3Nvbms4c3N0b3JhZ2U7QWNjb3VudEtleT1oRFZxOU13MUtBb3lBZzFEbkxBR2R0cklkV2YwelZnakZMejJXZC9EWk1DZjRLT2NhclE5RjFaZlN1YXVzMTRXZHFRTTc1Uk5rNFhubDFJeCtxc05odz09O0VuZHBvaW50U3VmZml4PWNvcmUud2luZG93cy5uZXQ=
+  FUNCTIONS_WORKER_RUNTIME: ZG90bmV0
+apiVersion: v1
+kind: Secret
+metadata:
+  name: review-functions
+---
+data:
+  host.master: d1QzWE5XTzAyeVhoMzBVb0JkUjlLL1RSaGFBc205NExtQzdtOERyQ3VSSmxoYkhjUW1Uc3lnPT0=
+  host.function.default: TVVLWURuY05Nalh1OG1hNXE0c3hneXQvZldRMFR3VTNaOEU1QVZLVEpVZnJHa0M3RWlFQVV3PT0=
+  host.systemKey.default: OVZ0T2tiOURDYWpzMXJtVTNyMFY5MHhXc0dvQU9EZ2l2VkVHZW02Y3k0aDNHamtvbFNBNmFBPT0=
+  functions.reviewgenerator.default: YTJqU2ZUR1VQazU1Zjl2QmFRaE5ETFlhS1hPT3dFc0hSM2NPWnhzL1YzUHU0S2hTbENMbU5nPT0=
+apiVersion: v1
+kind: Secret
+metadata:
+  name: func-keys-kube-secret-review-functions
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: review-functions-function-keys-identity-svc-act
+---
+rules:
+- apiGroups:
+  - ''
+  resources:
+  - secrets
+  - configMaps
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: functions-keys-manager-role
+---
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: functions-keys-manager-role
+subjects:
+- kind: ServiceAccount
+  name: review-functions-function-keys-identity-svc-act
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: review-functions-function-keys-identity-svc-act-functions-keys-manager-rolebinding
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: review-functions-http
+spec:
+  selector:
+    app: review-functions-http
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 80
+  type: LoadBalancer
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: review-functions-http
+  labels:
+    app: review-functions-http
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: review-functions-http
+  template:
+    metadata:
+      labels:
+        app: review-functions-http
+    spec:
+      containers:
+      - name: review-functions-http
+        image: reviewscontainerregistrydemo.azurecr.io/reviews-processor:latest
+        ports:
+        - containerPort: 80
+        env:
+        - name: AzureFunctionsJobHost__functions__0
+          value: ReviewGenerator
+        - name: AzureWebJobsSecretStorageType
+          value: kubernetes
+        - name: AzureWebJobsKubernetesSecretName
+          value: secrets/func-keys-kube-secret-review-functions
+        envFrom:
+        - secretRef:
+            name: review-functions
+        readinessProbe:
+          failureThreshold: 3
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 240
+          httpGet:
+            path: /
+            port: 80
+            scheme: HTTP
+        startupProbe:
+          failureThreshold: 3
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 240
+          httpGet:
+            path: /
+            port: 80
+            scheme: HTTP
+      serviceAccountName: review-functions-function-keys-identity-svc-act
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: review-functions
+  labels:
+    app: review-functions
+spec:
+  selector:
+    matchLabels:
+      app: review-functions
+  template:
+    metadata:
+      labels:
+        app: review-functions
+    spec:
+      containers:
+      - name: review-functions
+        image: reviewscontainerregistrydemo.azurecr.io/reviews-processor:latest
+        env:
+        - name: AzureFunctionsJobHost__functions__0
+          value: ReviewQueueListener
+        envFrom:
+        - secretRef:
+            name: review-functions
+        readinessProbe:
+          failureThreshold: 3
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 240
+          httpGet:
+            path: /
+            port: 80
+            scheme: HTTP
+        startupProbe:
+          failureThreshold: 3
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 240
+          httpGet:
+            path: /
+            port: 80
+            scheme: HTTP
+      serviceAccountName: review-functions-function-keys-identity-svc-act
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: review-functions
+  labels: {}
+spec:
+  scaleTargetRef:
+    name: review-functions
+  triggers:
+  - type: azure-queue
+    metadata:
+      queueName: review-submitted
+      connectionFromEnv: ReviewQueueConnectionString
+---
+

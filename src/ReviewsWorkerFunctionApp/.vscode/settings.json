@@ -1,0 +1,25 @@
+{
+    "azureFunctions.deploySubpath": "bin/Release/netcoreapp3.0/publish",
+    "azureFunctions.projectLanguage": "C#",
+    "azureFunctions.projectRuntime": "~3",
+    "debug.internalConsoleOptions": "neverOpen",
+    "azureFunctions.preDeployTask": "publish",
+    "cSpell.words": [
+        "Dockerised",
+        "Kube",
+        "Newtonsoft",
+        "azurecr",
+        "behaviour",
+        "kubectl",
+        "lblkc",
+        "mkdir",
+        "mwqw",
+        "myqueue",
+        "nameof",
+        "reviewscontainerregistrydemo",
+        "ssqp",
+        "sstorage",
+        "tjwxd",
+        "xvzw"
+    ]
+}
