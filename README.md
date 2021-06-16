@@ -51,15 +51,15 @@ Because we are building a queue storage trigger, we will need an Azure Storage Q
 
 To get started, we will [create an Azure Storage Queue using the Azure CLI](https://docs.microsoft.com/en-us/azure/storage/common/storage-account-create?tabs=azure-cli). If you prefer, you can also [create an Azure Storage Queue via the portal](https://docs.microsoft.com/en-us/azure/storage/queues/storage-quickstart-queues-portal). Make sure you login:
 
-`az.cmd login`
+`az login`
 
 I'm assuming you [already have an Azure subscription](https://docs.microsoft.com/en-us/cli/azure/manage-azure-subscriptions-azure-cli). Find the target subscription with:
 
-`az.cmd account list -o table`
+`az account list -o table`
 
 You will be presented with a table of subscriptions. Make sure `IsDefault` is true for the target subscription, otherwise use the following command to set the subscription:
 
-`az.cmd account set --subscription <subscription-id-here>`
+`az account set --subscription <subscription-id-here>`
 
 Replace `<subscription-id-here>` with the relevant subscription Id from the output of the list command.
 
@@ -69,7 +69,7 @@ We'll create a new resource-group for our resources. Set a variable for the reso
 
 You'll also need to choose a location to host your resources. You can list the available locations with:
 
-`az.cmd account list-locations -o table`
+`az account list-locations -o table`
 
 Again, set a variable with:
 
@@ -77,7 +77,7 @@ Again, set a variable with:
 
 Create the resource-group with:
 
-`az.cmd group create --name $group --location $location`
+`az group create --name $group --location $location`
 
 The final command will create the Azure Storage Account. We will first set a few variables to help us understand the various options:
 
@@ -98,7 +98,7 @@ The final command will create the Azure Storage Account. We will first set a few
 
 The command to create the storage-account will then be:
 
-`az.cmd storage account create --resource-group $group --name $storageAccountName --location $location --kind $storageKind --sku $storageSku --access-tier $storageAccessTier --https-only $storageHttpsOnly`
+`az storage account create --resource-group $group --name $storageAccountName --location $location --kind $storageKind --sku $storageSku --access-tier $storageAccessTier --https-only $storageHttpsOnly`
 
 Finally we need to create the storage queue inside the new storage account. [The queue creation parameters are explained here](https://docs.microsoft.com/en-us/cli/azure/storage/queue?view=azure-cli-latest#az_storage_queue_create), but we will go through them.
 
@@ -108,7 +108,7 @@ We will call our storage queue `review-submitted`:
 
 We also need a storage-account key to use with the queue. We will generate this using the following command and store the output in a variable for later use:
 
-`storageAccountKey=$(az.cmd storage account keys list --resource-group $group --account-name $storageAccountName --query "[0].value" | tr -d '"')`
+`storageAccountKey=$(az storage account keys list --resource-group $group --account-name $storageAccountName --query "[0].value" | tr -d '"')`
 
 We will also grab a connection string which we will need to use with our function app in a later section:
 
@@ -118,7 +118,7 @@ Use `echo $storageAccountConnectionString` to output the connection string and m
 
 We can then create the new storage queue using the generated account key and connection string:
 
-`az.cmd storage queue create --name $queueName --account-key $storageAccountKey --account-name $storageAccountName --connection-string $storageAccountConnectionString`
+`az storage queue create --name $queueName --account-key $storageAccountKey --account-name $storageAccountName --connection-string $storageAccountConnectionString`
 
 ## Connect the function to the queue
 
@@ -271,15 +271,15 @@ First, declare a name for the registry:
 
 The following command will create the container registry. I have created it in the same group for the convenience of being able to delete the whole group after the demo. I'll use the (`Basic` SKU)[https://docs.microsoft.com/en-us/azure/container-registry/container-registry-skus] for the purposes of the demo:
 
-`az.cmd acr create --resource-group $group --name $containerRegistryName --sku Basic`
+`az acr create --resource-group $group --name $containerRegistryName --sku Basic`
 
 The next command assigns a system managed identity to the container-registry:
 
-`az.cmd acr identity assign --identities [system] --name $containerRegistryName`
+`az acr identity assign --identities [system] --name $containerRegistryName`
 
 Use the following command to print out details of the ACR login server etc. You'll need them for the next section:
 
-`az.cmd acr list -o table`
+`az acr list -o table`
 
 ## Build the Docker image and push to ACR
 
@@ -295,7 +295,7 @@ Note that your container registry name will be different. To build the container
 
 Finally, we need to push the built image to ACR. Before we can push to ACR, we need to authenticate:
 
-`az.cmd acr login --name $containerRegistryName`
+`az acr login --name $containerRegistryName`
 
 Now that we have authenticated with ACR, we can push images to it but using the fully-qualified "login-server" path:
 
@@ -303,7 +303,7 @@ Now that we have authenticated with ACR, we can push images to it but using the 
 
 To see the list of images under the ACR account run:
 
-`az.cmd acr repository list --name $containerRegistryName --output table`
+`az acr repository list --name $containerRegistryName --output table`
 
 The Docker image we have just produced should run anywhere Docker runs, e.g. you can run it locally with:
 
@@ -331,19 +331,19 @@ To create the Kubernetes cluster, run the following command:
 
 `aksName=reviewsAksDemo`
 
-`az.cmd aks create --resource-group $group --name $aksName --node-count 1 --generate-ssh-keys --network-plugin azure`
+`az aks create --resource-group $group --name $aksName --node-count 1 --generate-ssh-keys --network-plugin azure`
 
 Note that I have created a single node cluster to save costs. This is a single point of failure, and in reality you will want to provision multiple nodes. So we can pull images from ACR, we need to attach it to the cluster. This negates the need to setup an image-pull secret or similar:
 
-`az.cmd aks update --resource-group $group --name $aksName --attach-acr $containerRegistryName`
+`az aks update --resource-group $group --name $aksName --attach-acr $containerRegistryName`
 
 You can get the details of your new cluster with:
 
-`az.cmd aks list --output table`
+`az aks list --output table`
 
 We'll also want to grab the credentials to connect to and manage the cluster:
 
-`az.cmd aks get-credentials -g $group -n $aksName`
+`az aks get-credentials -g $group -n $aksName`
 
 You can view the cluster credentials using the `kubectl` command:
 
@@ -510,11 +510,11 @@ Here we are seeing the KEDA queue-based auto-scaler detecting the arrival of man
 
 If you create an AKS cluster, note that this will create one or more Virtual Machines. The cost of leaving this running can add up if you leave the cluster running, so you will likely want to cleanup by deleting the resource group (and therefore its contents). To do so, run:
 
-`az.cmd group delete -n $group`
+`az group delete -n $group`
 
 You might want to also consider adding billing alerts against your subscriptions. I find the following command useful for viewing consumption and costs, or you can also use the Azure portal:
 
-`az.cmd consumption usage list --output tsv > ./consumption.tsv`
+`az consumption usage list --output tsv > ./consumption.tsv`
 
 You can then open and sort `./consumption.tsv` as a spreadsheet. I spent about `1.93 AUD` to write this tutorial.
 
