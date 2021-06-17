@@ -364,6 +364,7 @@ This will install KEDA into the (new) namespace `keda` on the cluster. There det
 Next, we will need to create a Kubernetes deployment object as a YAML manifest. To do so use the `func kubernetes deploy` command with the `--dry-run` option and pipe out the deployment YAML to a file:
 
 `mkdir ./manifests`
+
 `func kubernetes deploy --name review-functions --image-name "$reviewsDockerImageName" --dry-run > ./manifests/review-function-deploy.yaml`
 
 Note that you can get detailed documentation using the `-h` flag, e.g. ` func kubernetes deploy -h`.
@@ -413,6 +414,7 @@ Note that the completion of this command doesn't guarantee completion of our dep
 Check on the status of an individual deployment with the describe command, e.g.
 
 `kubectl describe deployment/review-functions`
+
 `kubectl describe deployment/review-functions-http`
 
 The `func deploy` command generated two deployment objects - `review-functions` for the queue triggered function and `review-functions-http` for the HTTP triggered function. When I reviewed the events under `kubectl describe deployment/review-functions`, I noted that a single `pod` was provisioned, and torn down shortly after due to the lack of messages.
